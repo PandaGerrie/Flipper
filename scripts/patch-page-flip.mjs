@@ -17,24 +17,12 @@ const cornerZonePattern =
   /Math\.sqrt\(Math\.pow\(i,2\)\+Math\.pow\(e\.height,2\)\)\/\d+/g;
 const cornerFoldPattern = /this\.calc\.calc\(\{x:i-1,y:1\}\);const s=\d+/g;
 
-const patchedMouseFollow =
-  ",!1,!1)}else;else this.setState(\"read\"),this.render.finishAnimation(),this.stopMove()}animateFlippingTo";
-
-const cornerMouseFollowPatterns = [
-  {
-    from: /,!1,!1\)\}else this\.setState\("read"\),this\.render\.finishAnimation\(\),this\.stopMove\(\)\}animateFlippingTo/g,
-    to: patchedMouseFollow,
-  },
-  {
-    from: /,!1,!1\)\}else;else this\.setState\("read"\),this\.render\.finishAnimation\(\),this\.stopMove\(\)\}animateFlippingTo/g,
-    to: patchedMouseFollow,
-  },
-];
-
-const legacyMouseFollowPattern = /else this\.do\(this\.render\.convertToPage\(t\)\);/g;
+/** Fresh npm installs track the cursor in the corner zone (makes the fold huge). */
+const mouseFollowPattern =
+  /else this\.do\(this\.render\.convertToPage\(t\)\);/g;
 
 function patchSource(source, label) {
-  if (!source.match(cornerZonePattern) && !source.match(cornerFoldPattern)) {
+  if (!source.match(cornerZonePattern) || !source.match(cornerFoldPattern)) {
     throw new Error(`Could not find page-flip corner patterns in ${label}`);
   }
 
@@ -47,22 +35,20 @@ function patchSource(source, label) {
     `this.calc.calc({x:i-1,y:1});const s=${CORNER_FOLD_PX}`,
   );
 
-  for (const { from, to } of cornerMouseFollowPatterns) {
-    if (source.match(from)) {
-      source = source.replace(from, to);
-    }
-  }
-
-  if (!source.includes("else;else this.setState(\"read\")")) {
-    throw new Error(`Corner mouse-follow patch missing in ${label}`);
-  }
-
-  if (source.match(legacyMouseFollowPattern)) {
-    source = source.replace(legacyMouseFollowPattern, "else;");
+  // Remove mouse-follow on hover (idempotent if already patched).
+  if (source.match(mouseFollowPattern)) {
+    source = source.replace(mouseFollowPattern, "else;");
   }
 
   if (source.includes("else this.do(this.render.convertToPage(t))")) {
     throw new Error(`Corner mouse-follow still present in ${label}`);
+  }
+
+  // Fresh install becomes: }else;else this.setState("read")...
+  if (!source.includes('else;else this.setState("read")')) {
+    throw new Error(
+      `Corner mouse-follow patch missing in ${label}. showCorner snippet: ${source.slice(Math.max(0, source.indexOf("showCorner")), source.indexOf("showCorner") + 420)}`,
+    );
   }
 
   return source;
