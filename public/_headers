@@ -1,0 +1,9 @@
+/_next/static/*
+  Cache-Control: public,max-age=31536000,immutable
+
+/embed.js
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/embed
+  Content-Security-Policy: frame-ancestors *
