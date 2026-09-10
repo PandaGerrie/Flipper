@@ -1,1 +1,8 @@
 NEXTJS_ENV=development
+
+# Domain allowlist for embeds. JSON array of root domains (strings).
+# One root domain allows that host + every subdomain + every page.
+# Leave empty / omit for open embeds (any site).
+#
+# EMBED_SITES=["client-a.be","client-b.com","localhost"]
+EMBED_SITES=

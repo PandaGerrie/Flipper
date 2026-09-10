@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import HTMLFlipBook from "react-pageflip";
@@ -29,6 +30,8 @@ type FlipBookHandle = {
     getPageCount: () => number;
   };
 };
+
+type BookOrientation = "portrait" | "landscape";
 
 type FlipbookProps = {
   pdfUrl: string;
@@ -78,11 +81,13 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
   const [pageWidth, setPageWidth] = useState(380);
   const [pageHeight, setPageHeight] = useState(528);
   const [current, setCurrent] = useState(1);
+  const [orientation, setOrientation] = useState<BookOrientation>("portrait");
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState("Loading PDF…");
   const [error, setError] = useState<string | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,12 +225,14 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
     bookRef.current?.pageFlip().flipPrev();
   }
 
-  function goToPage(pageIndex: number) {
+  function goToPage(pageIndex: number, animated = true) {
     const api = bookRef.current?.pageFlip();
     if (!api) return;
     const clamped = Math.max(0, Math.min(pageIndex, pageCount - 1));
     if (clamped === api.getCurrentPageIndex()) return;
-    api.flip(clamped);
+    if (animated) api.flip(clamped);
+    else api.turnToPage(clamped);
+    setCurrent(clamped + 1);
   }
 
   function handleNamedAction(action: NamedPdfAction) {
@@ -236,6 +243,29 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
     if (action === "PrevPage") goToPage(index - 1);
     if (action === "FirstPage") goToPage(0);
     if (action === "LastPage") goToPage(pageCount - 1);
+  }
+
+  function pageLabel() {
+    if (!pageCount) return "—";
+    // Landscape spreads show two pages (cover stays single).
+    if (orientation === "landscape" && current > 1 && current < pageCount) {
+      const left = current % 2 === 0 ? current : current - 1;
+      const right = Math.min(left + 1, pageCount);
+      if (left >= 2 && right > left) return `${left} – ${right} / ${pageCount}`;
+    }
+    return `${current} / ${pageCount}`;
+  }
+
+  function onSliderInput(value: number) {
+    setIsScrubbing(true);
+    setCurrent(value);
+    goToPage(value - 1, false);
+  }
+
+  function onSliderCommit(value: number) {
+    setIsScrubbing(false);
+    setCurrent(value);
+    goToPage(value - 1, false);
   }
 
   function handleInternalLink(hotspot: PdfHotspot) {
@@ -256,7 +286,7 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
   return (
     <div
       ref={shellRef}
-      className={`flex h-full min-h-[420px] flex-col overflow-hidden bg-[#2a211c] ${className}`}
+      className={`flex min-h-[420px] flex-col overflow-hidden bg-[#2a211c] ${className}`}
     >
       <div ref={stageRef} className="relative flex min-h-0 flex-1 items-center justify-center p-3">
         {loading && (
@@ -299,7 +329,13 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
             className="flipbook-book"
             style={{ margin: "0 auto" }}
             startPage={0}
-            onFlip={(event) => setCurrent(event.data + 1)}
+            onFlip={(event) => {
+              if (!isScrubbing) setCurrent(event.data + 1);
+            }}
+            onChangeOrientation={(event) => {
+              const next = event?.data;
+              if (next === "portrait" || next === "landscape") setOrientation(next);
+            }}
             ref={bookRef as never}
           >
             {pages.map((page, index) => (
@@ -322,38 +358,77 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-[#1c1410] px-3 py-2.5 text-[#f3eadb]">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-[#1c1410] px-3 py-2.5 text-[#f3eadb] sm:flex-row sm:items-center sm:gap-3">
         <div className="flex items-center gap-1">
+          <ToolbarButton onClick={() => goToPage(0)} label="First page">
+            <SkipIcon direction="first" />
+          </ToolbarButton>
           <ToolbarButton onClick={flipPrev} label="Previous page">
             <ArrowIcon direction="left" />
           </ToolbarButton>
-          <p className="min-w-[5.5rem] text-center font-sans text-xs tabular-nums tracking-wide">
-            {pageCount ? `${current} / ${pageCount}` : "—"}
-          </p>
-          <ToolbarButton onClick={flipNext} label="Next page">
-            <ArrowIcon direction="right" />
-          </ToolbarButton>
         </div>
 
-        {truncated && (
-          <p className="hidden font-sans text-[11px] text-[#d9cbb8] sm:block">
-            Showing first {MAX_PAGES} pages
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <input
+            type="range"
+            min={1}
+            max={Math.max(pageCount, 1)}
+            step={1}
+            value={pageCount ? current : 1}
+            disabled={!pageCount}
+            aria-label="Page slider"
+            style={
+              {
+                ["--progress" as string]: pageCount
+                  ? `${((current - 1) / Math.max(pageCount - 1, 1)) * 100}%`
+                  : "0%",
+              } as CSSProperties
+            }
+            onChange={(event) => onSliderInput(Number(event.target.value))}
+            onMouseUp={(event) => onSliderCommit(Number((event.target as HTMLInputElement).value))}
+            onTouchEnd={(event) =>
+              onSliderCommit(Number((event.target as HTMLInputElement).value))
+            }
+            className="fl-page-slider h-2 w-full min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-transparent accent-[#d9cbb8] disabled:cursor-not-allowed disabled:opacity-40"
+          />
+          <p className="min-w-[5.75rem] shrink-0 text-right font-sans text-xs tabular-nums tracking-wide sm:min-w-[7rem]">
+            {pageLabel()}
           </p>
-        )}
+        </div>
 
-        <div className="flex items-center gap-1">
-          <ToolbarButton onClick={toggleFullscreen} label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
-            <FullscreenIcon exit={isFullscreen} />
-          </ToolbarButton>
-          <a
-            href={proxyPdfUrl(pdfUrl)}
-            download="document.pdf"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#f3eadb] transition hover:bg-white/10"
-            aria-label="Download PDF"
-            title="Download PDF"
-          >
-            <DownloadIcon />
-          </a>
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
+          <div className="flex items-center gap-1">
+            <ToolbarButton onClick={flipNext} label="Next page">
+              <ArrowIcon direction="right" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => goToPage(pageCount - 1)} label="Last page">
+              <SkipIcon direction="last" />
+            </ToolbarButton>
+          </div>
+
+          {truncated && (
+            <p className="hidden font-sans text-[11px] text-[#d9cbb8] lg:block">
+              First {MAX_PAGES} pages
+            </p>
+          )}
+
+          <div className="flex items-center gap-1">
+            <ToolbarButton
+              onClick={toggleFullscreen}
+              label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              <FullscreenIcon exit={isFullscreen} />
+            </ToolbarButton>
+            <a
+              href={proxyPdfUrl(pdfUrl)}
+              download="document.pdf"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#f3eadb] transition hover:bg-white/10"
+              aria-label="Download PDF"
+              title="Download PDF"
+            >
+              <DownloadIcon />
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -443,6 +518,24 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SkipIcon({ direction }: { direction: "first" | "last" }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {direction === "first" ? (
+        <>
+          <path d="M18 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M6 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          <path d="M6 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M18 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      )}
     </svg>
   );
 }
