@@ -14,6 +14,7 @@ type EmbedCodeProps = {
   buttonStyle?: CatalogButtonStyle;
   buttonClass?: string;
   buttonLabel?: string;
+  buttonOpenParam?: string;
   preferButtonClass?: boolean;
 };
 
@@ -24,11 +25,13 @@ export function EmbedCode({
   buttonStyle,
   buttonClass,
   buttonLabel,
+  buttonOpenParam,
   preferButtonClass = false,
 }: EmbedCodeProps) {
   const headSnippet = `<script\n  src="${origin}/embed.js"\n  defer\n></script>`;
 
   const label = (buttonLabel ?? "").trim() || "Open catalog";
+  const openParam = (buttonOpenParam ?? "").trim();
   const bodyAttrs =
     mode === "button"
       ? [
@@ -36,6 +39,7 @@ export function EmbedCode({
           `type="button"`,
           `data-src="${pdfUrl}"`,
           `data-label="${escapeAttr(label)}"`,
+          ...(openParam ? [`data-fpp="${escapeAttr(openParam)}"`] : []),
           ...(buttonStyle
             ? buttonEmbedAttrs(buttonStyle, buttonClass, preferButtonClass)
             : []),

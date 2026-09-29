@@ -38,6 +38,7 @@ export function HomeClient() {
     useState<CatalogButtonStyle>(DEFAULT_BUTTON_STYLE);
   const [buttonClass, setButtonClass] = useState("");
   const [buttonLabel, setButtonLabel] = useState("Open catalog");
+  const [buttonOpenParam, setButtonOpenParam] = useState("");
   const [buttonOptionsTab, setButtonOptionsTab] =
     useState<ButtonOptionsTab>("style");
 
@@ -142,11 +143,13 @@ export function HomeClient() {
                 label={buttonLabel}
                 style={buttonStyle}
                 buttonClass={buttonClass}
+                openParam={buttonOpenParam}
                 optionsTab={buttonOptionsTab}
                 onOptionsTabChange={setButtonOptionsTab}
                 onLabelChange={setButtonLabel}
                 onStyleChange={setButtonStyle}
                 onClassChange={setButtonClass}
+                onOpenParamChange={setButtonOpenParam}
                 onOpen={() => setCatalogOpen(true)}
               />
             </section>
@@ -159,6 +162,7 @@ export function HomeClient() {
             buttonStyle={tab === "button" ? buttonStyle : undefined}
             buttonClass={tab === "button" ? buttonClass : undefined}
             buttonLabel={tab === "button" ? buttonLabel : undefined}
+            buttonOpenParam={tab === "button" ? buttonOpenParam : undefined}
             preferButtonClass={
               tab === "button" && buttonOptionsTab === "class"
             }

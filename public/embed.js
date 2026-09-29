@@ -8,6 +8,7 @@
 
   var overlayId = "fl-flipbook-overlay";
   var escapeListener = null;
+  var autoOpened = false;
 
   function getEmbedType(el) {
     var type = (el.getAttribute("type") || el.getAttribute("data-type") || "")
@@ -32,6 +33,26 @@
     }
     overlay.remove();
     document.body.style.overflow = "";
+  }
+
+  function fppQuery() {
+    try {
+      return (new URLSearchParams(window.location.search).get("fpp") || "").trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function requestOverlayFullscreen(overlay) {
+    var request =
+      overlay.requestFullscreen ||
+      overlay.webkitRequestFullscreen ||
+      overlay.msRequestFullscreen;
+    if (!request) return;
+    try {
+      var result = request.call(overlay);
+      if (result && result.catch) result.catch(function () {});
+    } catch (e) {}
   }
 
   function openFullscreenCatalog(src, title) {
@@ -162,6 +183,18 @@
     });
 
     el.appendChild(button);
+    clickMatchingButton(el, button);
+  }
+
+  function clickMatchingButton(el, button) {
+    if (autoOpened || !button) return;
+    var openParam = (el.getAttribute("data-fpp") || "").trim();
+    var queryParam = fppQuery();
+    if (!openParam || queryParam !== openParam) return;
+    autoOpened = true;
+    button.click();
+    var overlay = document.getElementById(overlayId);
+    if (overlay) requestOverlayFullscreen(overlay);
   }
 
   function contrastText(hex) {

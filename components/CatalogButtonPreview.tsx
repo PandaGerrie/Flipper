@@ -11,11 +11,13 @@ type CatalogButtonPreviewProps = {
   label: string;
   style?: CatalogButtonStyle;
   buttonClass: string;
+  openParam: string;
   optionsTab: ButtonOptionsTab;
   onOptionsTabChange: (tab: ButtonOptionsTab) => void;
   onLabelChange: (next: string) => void;
   onStyleChange: (next: CatalogButtonStyle) => void;
   onClassChange: (next: string) => void;
+  onOpenParamChange: (next: string) => void;
   onOpen: () => void;
 };
 
@@ -23,11 +25,13 @@ export function CatalogButtonPreview({
   label,
   style = DEFAULT_BUTTON_STYLE,
   buttonClass,
+  openParam,
   optionsTab,
   onOptionsTabChange,
   onLabelChange,
   onStyleChange,
   onClassChange,
+  onOpenParamChange,
   onOpen,
 }: CatalogButtonPreviewProps) {
   const useClass = optionsTab === "class" && buttonClass.trim().length > 0;
@@ -77,6 +81,33 @@ export function CatalogButtonPreview({
             aria-label="Button label"
             autoComplete="off"
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5 font-sans text-sm text-[#1a1410]">
+          <span>Parameter</span>
+          <input
+            type="text"
+            value={openParam}
+            onChange={(event) => onOpenParamChange(event.target.value)}
+            placeholder="brochure"
+            maxLength={80}
+            className="h-10 rounded-lg border border-[#d9cbb8] bg-[#fffaf3] px-3 font-mono text-[13px] text-[#1a1410] outline-none ring-[#6b2d5b] placeholder:text-[#9a8776] focus:border-[#6b2d5b] focus:ring-2"
+            aria-label="Fullscreen open parameter"
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <p className="text-xs leading-relaxed text-[#6b5c50]">
+            Als je de brochure rechtstreeks in fullscreen wilt openen vanaf het
+            landen op de pagina, deel dan de link van de pagina met de volgende
+            parameter:
+          </p>
+          <p className="break-all rounded-lg bg-[#efe4d4] px-2 py-1.5 font-mono text-[11px] leading-relaxed text-[#1a1410]">
+            {`example.page/slug/?fpp=${
+              openParam.trim()
+                ? encodeURIComponent(openParam.trim())
+                : "[parameter]"
+            }`}
+          </p>
         </label>
 
         <div className="flex gap-1 border-b border-[#e4d6c4]">
