@@ -17,6 +17,9 @@
       "service": "flipper"
     }
   ],
+  "vars": {
+    "EMBED_SITES": "[\"vanmoer.com\",\"purplepanda.be\"]"
+  },
   "observability": {
     "enabled": true
   }
