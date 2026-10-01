@@ -8,10 +8,10 @@ export type CatalogButtonStyle = {
 };
 
 export const DEFAULT_BUTTON_STYLE: CatalogButtonStyle = {
-  backgroundColor: "#6b2d5b",
-  borderColor: "#6b2d5b",
+  backgroundColor: "#1a1a1a",
+  borderColor: "#1a1a1a",
   borderWidth: 0,
-  borderRadius: 12,
+  borderRadius: 8,
 };
 
 /** Readable label color for a hex background. */
@@ -29,7 +29,7 @@ export function buttonTextColor(backgroundColor: string): string {
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.62 ? "#1a1410" : "#fffaf3";
+  return luminance > 0.62 ? "#111111" : "#ffffff";
 }
 
 export function buttonStyleToCss(style: CatalogButtonStyle): CSSProperties {

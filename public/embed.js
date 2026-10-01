@@ -75,7 +75,7 @@
     closeBtn.setAttribute("aria-label", "Close catalog");
     closeBtn.textContent = "Close";
     closeBtn.style.cssText =
-      "border:0;background:#6b2d5b;color:#fffaf3;font:600 13px/1 system-ui,sans-serif;padding:8px 14px;border-radius:999px;cursor:pointer;";
+      "border:0;background:#1a1a1a;color:#ffffff;font:600 13px/1 system-ui,sans-serif;padding:8px 14px;border-radius:8px;cursor:pointer;";
 
     var fsBtn = document.createElement("button");
     fsBtn.type = "button";
@@ -152,10 +152,10 @@
       button.className = customClass;
       button.style.cssText = "font:inherit;cursor:pointer;";
     } else {
-      var bg = el.getAttribute("data-bg") || "#6b2d5b";
+      var bg = el.getAttribute("data-bg") || "#1a1a1a";
       var borderColor = el.getAttribute("data-border-color") || bg;
       var borderWidth = el.getAttribute("data-border-width") || "0px";
-      var radius = el.getAttribute("data-radius") || "12px";
+      var radius = el.getAttribute("data-radius") || "8px";
       var textColor = contrastText(bg);
       button.style.cssText =
         "display:inline-flex;align-items:center;justify-content:center;" +
@@ -207,12 +207,12 @@
         })
         .join("");
     }
-    if (raw.length !== 6) return "#fffaf3";
+    if (raw.length !== 6) return "#ffffff";
     var r = parseInt(raw.slice(0, 2), 16);
     var g = parseInt(raw.slice(2, 4), 16);
     var b = parseInt(raw.slice(4, 6), 16);
     var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.62 ? "#1a1410" : "#fffaf3";
+    return luminance > 0.62 ? "#111111" : "#ffffff";
   }
 
   function hydrate(el) {
