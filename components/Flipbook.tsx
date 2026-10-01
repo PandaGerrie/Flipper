@@ -31,8 +31,6 @@ type FlipBookHandle = {
   };
 };
 
-type BookOrientation = "portrait" | "landscape";
-
 type FlipbookProps = {
   pdfUrl: string;
   className?: string;
@@ -81,7 +79,6 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
   const [pageWidth, setPageWidth] = useState(380);
   const [pageHeight, setPageHeight] = useState(528);
   const [current, setCurrent] = useState(1);
-  const [orientation, setOrientation] = useState<BookOrientation>("portrait");
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState("Loading PDF…");
   const [error, setError] = useState<string | null>(null);
@@ -178,9 +175,10 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
 
     const availableWidth = stage.clientWidth;
     const availableHeight = Math.max(stage.clientHeight, 280);
-    const portrait = availableWidth < 720;
 
-    const widthBudget = portrait ? availableWidth - 16 : (availableWidth - 24) / 2;
+    // Always fit a single page; the book is wrapped to this size so page-flip
+    // cannot switch into two-page landscape mode.
+    const widthBudget = availableWidth - 16;
     const heightBudget = availableHeight - 8;
 
     let width = Math.floor(widthBudget);
@@ -229,8 +227,12 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
     const api = bookRef.current?.pageFlip();
     if (!api) return;
     const clamped = Math.max(0, Math.min(pageIndex, pageCount - 1));
-    if (clamped === api.getCurrentPageIndex()) return;
-    if (animated) api.flip(clamped);
+    const currentIndex = api.getCurrentPageIndex();
+    if (clamped === currentIndex) return;
+
+    // page-flip's flip() only animates one adjacent spread after an internal seek.
+    // Long jumps (First/Last) fail and snap back — use turnToPage instead.
+    if (animated && Math.abs(clamped - currentIndex) === 1) api.flip(clamped);
     else api.turnToPage(clamped);
     setCurrent(clamped + 1);
   }
@@ -241,18 +243,12 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
     const index = api.getCurrentPageIndex();
     if (action === "NextPage") goToPage(index + 1);
     if (action === "PrevPage") goToPage(index - 1);
-    if (action === "FirstPage") goToPage(0);
-    if (action === "LastPage") goToPage(pageCount - 1);
+    if (action === "FirstPage") goToPage(0, false);
+    if (action === "LastPage") goToPage(pageCount - 1, false);
   }
 
   function pageLabel() {
     if (!pageCount) return "—";
-    // Landscape spreads show two pages (cover stays single).
-    if (orientation === "landscape" && current > 1 && current < pageCount) {
-      const left = current % 2 === 0 ? current : current - 1;
-      const right = Math.min(left + 1, pageCount);
-      if (left >= 2 && right > left) return `${left} – ${right} / ${pageCount}`;
-    }
     return `${current} / ${pageCount}`;
   }
 
@@ -304,57 +300,58 @@ export function Flipbook({ pdfUrl, className = "" }: FlipbookProps) {
         )}
 
         {!loading && !error && pageCount > 0 && (
-          <HTMLFlipBook
-            key={`${pdfUrl}-${pageWidth}-${pageHeight}-${pageCount}`}
-            width={pageWidth}
-            height={pageHeight}
-            size="fixed"
-            minWidth={160}
-            maxWidth={pageWidth}
-            minHeight={220}
-            maxHeight={pageHeight}
-            drawShadow
-            flippingTime={700}
-            usePortrait
-            startZIndex={0}
-            autoSize
-            maxShadowOpacity={0.6}
-            showCover
-            mobileScrollSupport
-            clickEventForward
-            useMouseEvents
-            swipeDistance={30}
-            showPageCorners
-            disableFlipByClick
-            className="flipbook-book"
-            style={{ margin: "0 auto" }}
-            startPage={0}
-            onFlip={(event) => {
-              if (!isScrubbing) setCurrent(event.data + 1);
-            }}
-            onChangeOrientation={(event) => {
-              const next = event?.data;
-              if (next === "portrait" || next === "landscape") setOrientation(next);
-            }}
-            ref={bookRef as never}
+          <div
+            className="mx-auto"
+            style={{ width: pageWidth, height: pageHeight, maxWidth: "100%" }}
           >
-            {pages.map((page, index) => (
-              <Page
-                key={`${index}-${page.src.slice(-12)}`}
-                aspect={page.aspect}
-                hotspots={page.hotspots}
-                onInternalLink={handleInternalLink}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={page.src}
-                  alt={`Page ${index + 1}`}
-                  draggable={false}
-                  className="pointer-events-none block h-full w-full"
-                />
-              </Page>
-            ))}
-          </HTMLFlipBook>
+            <HTMLFlipBook
+              key={`${pdfUrl}-${pageWidth}-${pageHeight}-${pageCount}`}
+              width={pageWidth}
+              height={pageHeight}
+              size="fixed"
+              minWidth={pageWidth}
+              maxWidth={pageWidth}
+              minHeight={pageHeight}
+              maxHeight={pageHeight}
+              drawShadow
+              flippingTime={700}
+              usePortrait
+              startZIndex={0}
+              autoSize={false}
+              maxShadowOpacity={0.6}
+              showCover={false}
+              mobileScrollSupport
+              clickEventForward
+              useMouseEvents
+              swipeDistance={30}
+              showPageCorners
+              disableFlipByClick
+              className="flipbook-book"
+              style={{ margin: "0 auto" }}
+              startPage={0}
+              onFlip={(event) => {
+                if (!isScrubbing) setCurrent(event.data + 1);
+              }}
+              ref={bookRef as never}
+            >
+              {pages.map((page, index) => (
+                <Page
+                  key={`${index}-${page.src.slice(-12)}`}
+                  aspect={page.aspect}
+                  hotspots={page.hotspots}
+                  onInternalLink={handleInternalLink}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={page.src}
+                    alt={`Page ${index + 1}`}
+                    draggable={false}
+                    className="pointer-events-none block h-full w-full"
+                  />
+                </Page>
+              ))}
+            </HTMLFlipBook>
+          </div>
         )}
       </div>
 
